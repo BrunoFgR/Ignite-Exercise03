@@ -23,20 +23,54 @@ const CartContext = createContext<CartContextData>({} as CartContextData);
 
 export function CartProvider({ children }: CartProviderProps): JSX.Element {
   const [cart, setCart] = useState<Product[]>(() => {
-    // const storagedCart = Buscar dados do localStorage
+    const storagedCart = localStorage.getItem('@Rocketseat:cart')
 
-    // if (storagedCart) {
-    //   return JSON.parse(storagedCart);
-    // }
+    if (storagedCart) {
+      return JSON.parse(storagedCart) as Product[];
+    }
 
     return [];
   });
 
   const addProduct = async (productId: number) => {
     try {
-      // TODO
+      const [product, stock] = await Promise.all([
+        api.get(`/products/${productId}`),
+        api.get(`/stock/${productId}`),
+      ])
+
+      const productExist = cart.find(p => p.id === productId);
+
+      if (!productExist) {
+        Object.assign(product.data, {
+          ...product.data,
+          amount: 1,
+        })
+
+        localStorage.setItem('@Rocketseat:cart', JSON.stringify([...cart, product.data]))
+
+        setCart([
+          ...cart,
+          product.data,
+        ])
+      } else {
+        const updateProductAmount = cart.map(product => {
+          if (product.id === productId) {
+            Object.assign(product, {
+              ...product,
+              amount: (product.amount || 0) + 1,
+            })
+          }
+
+          return product;
+        });
+
+        localStorage.setItem('@Rocketseat:cart', JSON.stringify(updateProductAmount));
+
+        setCart(updateProductAmount);
+      }
     } catch {
-      // TODO
+      toast.error('Erro na adição do produto')
     }
   };
 
